@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Management System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+        input, button {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #bookList, #memberList {
+            list-style-type: none;
+            padding: 0;
+        }
+        #bookList li, #memberList li {
+            background: #f4f4f4;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Library Management System</h1>
+        
+        <h2>Books</h2>
+        <form id="bookForm">
+            <input type="text" id="bookTitle" placeholder="Title" required>
+            <input type="text" id="bookAuthor" placeholder="Author" required>
+            <input type="text" id="bookISBN" placeholder="ISBN" required>
+            <input type="number" id="bookQuantity" placeholder="Quantity" required>
+            <button type="submit">Add Book</button>
+        </form>
+        <input type="text" id="bookSearch" placeholder="Search books...">
+        <p>books List:</p>
+        <ul id="bookList"></ul>
+        <div id="bookPagination"></div>
+
+        <h2>Members</h2>
+        <form id="memberForm">
+            <input type="text" id="memberName" placeholder="Name" required>
+            <input type="email" id="memberEmail" placeholder="Email" required>
+            <button type="submit">Add Member</button>
+        </form>
+        <p>Members List:</p>
+        <ul id="memberList"></ul>
+    </div>
+
+    <script>
+        // Book functions
+        function fetchBooks(page = 1, search = '') {
+            fetch(`/api/books?page=${page}&search=${search}`)
+                .then(response => response.json())
+                .then(data => {
+                    const bookList = document.getElementById('bookList');
+                    bookList.innerHTML = '';
+                    data.books.forEach(book => {
+                        const li = document.createElement('li');
+                        li.textContent = `${book.title} by ${book.author} (ISBN: ${book.isbn}, Quantity: ${book.quantity})`;
+                        bookList.appendChild(li);
+                    });
+                    updatePagination(data.current_page, data.pages);
+                });
+        }
+
+        function updatePagination(currentPage, totalPages) {
+            const pagination = document.getElementById('bookPagination');
+            pagination.innerHTML = '';
+            for (let i = 1; i <= totalPages; i++) {
+                const button = document.createElement('button');
+                button.textContent = i;
+                button.onclick = () => fetchBooks(i, document.getElementById('bookSearch').value);
+                if (i === currentPage) {
+                    button.disabled = true;
+                }
+                pagination.appendChild(button);
+            }
+        }
+
+        document.getElementById('bookForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const book = {
+                title: document.getElementById('bookTitle').value,
+                author: document.getElementById('bookAuthor').value,
+                isbn: document.getElementById('bookISBN').value,
+                quantity: document.getElementById('bookQuantity').value
+            };
+            fetch('/api/books', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(book),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                fetchBooks();
+                e.target.reset();
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        });
+
+        document.getElementById('bookSearch').addEventListener('input', function(e) {
+            fetchBooks(1, e.target.value);
+        });
+
+        // Member functions
+        function fetchMembers() {
+            fetch('/api/members')
+                .then(response => response.json())
+                .then(data => {
+                    const memberList = document.getElementById('memberList');
+                    memberList.innerHTML = '';
+                    data.forEach(member => {
+                        const li = document.createElement('li');
+                        li.textContent = `${member.name} (${member.email})`;
+                        memberList.appendChild(li);
+                    });
+                });
+        }
+
+        document.getElementById('memberForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const member = {
+                name: document.getElementById('memberName').value,
+                email: document.getElementById('memberEmail').value
+            };
+            fetch('/api/members', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(member),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                fetchMembers();
+                e.target.reset();
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        });
+
+        // Initial fetch
+        fetchBooks();
+        fetchMembers();
+    </script>
+</body>
+</html>
+
